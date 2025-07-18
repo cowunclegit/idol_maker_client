@@ -15,8 +15,8 @@ function App() {
   const [collectionCooldowns, setCollectionCooldowns] = useState({}); 
   const cooldownTimerRefs = useRef({}); 
   const [selectedBuildingForUpgrade, setSelectedBuildingForUpgrade] = useState(null); 
-  const [constructionTimers, setConstructionTimers] = useState({}); // New state for construction timers
-  const constructionTimerRefs = useRef({}); // New ref for construction timers
+  const [constructionTimers, setConstructionTimers] = useState({}); 
+  const constructionTimerRefs = useRef({}); 
 
   const API_BASE_URL = '' 
 
@@ -175,7 +175,7 @@ function App() {
                 delete constructionTimerRefs.current[building._id];
                 updatedPrev[building._id] = 0;
                 console.log(`  Construction for ${building.type} (${building._id}) finished.`);
-                handleFinishConstruction(building._id); // Call finish construction API
+                // Removed automatic handleFinishConstruction call
               } else {
                 updatedPrev[building._id] = updatedPrev[building._id] - 1000;
               }
@@ -183,9 +183,9 @@ function App() {
             });
           }, 1000);
         } else {
-          // If already finished, trigger finish construction immediately if not already done
-          console.log(`  Construction for ${building.type} (${building._id}) already finished. Calling finish.`);
-          handleFinishConstruction(building._id);
+          // If already finished, set remaining time to 0
+          newConstructionTimers[building._id] = 0;
+          console.log(`  Construction for ${building.type} (${building._id}) already finished.`);
         }
       }
     });
@@ -198,7 +198,7 @@ function App() {
       }
       constructionTimerRefs.current = {};
     };
-  }, [buildings, token]); // Add token to dependencies as handleFinishConstruction uses it
+  }, [buildings, token]); 
 
   const fetchProfile = async (currentToken) => {
     try {
@@ -506,6 +506,14 @@ Electricity: ${resources.electricity}`
                     {b.isConstructing && (
                       <span style={{ marginLeft: '10px', color: 'blue' }}>
                         (Constructing: {formatTime(remainingConstructionTime)})
+                        {remainingConstructionTime <= 0 && (
+                          <button 
+                            onClick={() => handleFinishConstruction(b._id)}
+                            style={{ marginLeft: '10px', padding: '5px 10px', cursor: 'pointer' }}
+                          >
+                            Finish
+                          </button>
+                        )}
                       </span>
                     )}
                     {!b.isConstructing && upgradeCost ? (
