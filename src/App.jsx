@@ -12,8 +12,8 @@ function App() {
   const [buildings, setBuildings] = useState([])
   const [availableBuildingTypes, setAvailableBuildingTypes] = useState([])
   const [mapGrid, setMapGrid] = useState([])
-  const [collectionCooldown, setCollectionCooldown] = useState(0); 
-  const cooldownTimerRef = useRef(null); 
+  const [collectionCooldowns, setCollectionCooldowns] = useState({}); 
+  const cooldownTimerRefs = useRef({}); 
 
   const API_BASE_URL = '' 
 
@@ -34,6 +34,8 @@ function App() {
         document.getElementById('google-sign-in-button'),
         { theme: 'outline', size: 'large' }
       );
+    } else {
+      console.log('window.google is NOT available. Please ensure the GSI script is loaded.');
     }
   }, []);
 
@@ -73,34 +75,69 @@ function App() {
     }
   }, [token])
 
+  // Cooldown timer effect for each building type
   useEffect(() => {
-    if (resources && resources.lastCollected && resources.collectionInterval) {
-      const lastCollectedTime = new Date(resources.lastCollected).getTime();
-      const collectionInterval = resources.collectionInterval;
-      const timeElapsed = Date.now() - lastCollectedTime;
-      const remainingCooldown = Math.max(0, collectionInterval - timeElapsed);
-      setCollectionCooldown(remainingCooldown);
+    console.log('--- Cooldown useEffect triggered ---');
+    console.log('Resources for cooldown calculation:', resources);
 
-      if (cooldownTimerRef.current) {
-        clearInterval(cooldownTimerRef.current);
-      }
+    // Clear all existing timers before setting new ones
+    for (const type in cooldownTimerRefs.current) {
+      clearInterval(cooldownTimerRefs.current[type]);
+      delete cooldownTimerRefs.current[type];
+    }
 
-      if (remainingCooldown > 0) {
-        cooldownTimerRef.current = setInterval(() => {
-          setCollectionCooldown(prev => {
-            if (prev <= 1000) {
-              clearInterval(cooldownTimerRef.current);
-              return 0;
-            }
-            return prev - 1000;
-          });
-        }, 1000);
-      }
+    if (resources && resources.lastCollected && resources.buildingConfigs) {
+      console.log('Resources, lastCollected, and buildingConfigs are present.');
+      const newCooldowns = {};
+      const buildingTypes = Object.keys(resources.buildingConfigs);
+
+      buildingTypes.forEach(type => {
+        const config = resources.buildingConfigs[type];
+        if (config.collectionInterval) {
+          const lastCollectedTime = resources.lastCollected[type] ? new Date(resources.lastCollected[type]).getTime() : 0;
+          const collectionInterval = config.collectionInterval;
+          const timeElapsed = Date.now() - lastCollectedTime;
+          const remainingCooldown = Math.max(0, collectionInterval - timeElapsed);
+          
+          console.log(`  Type: ${type}, lastCollectedTime: ${lastCollectedTime}, collectionInterval: ${collectionInterval}, timeElapsed: ${timeElapsed}, remainingCooldown: ${remainingCooldown}`);
+
+          newCooldowns[type] = remainingCooldown;
+
+          if (remainingCooldown > 0) {
+            console.log(`  Starting timer for ${type} with remaining: ${remainingCooldown}`);
+            cooldownTimerRefs.current[type] = setInterval(() => {
+              setCollectionCooldowns(prev => {
+                const updatedPrev = { ...prev };
+                if (updatedPrev[type] <= 1000) {
+                  clearInterval(cooldownTimerRefs.current[type]);
+                  delete cooldownTimerRefs.current[type];
+                  updatedPrev[type] = 0;
+                  console.log(`  Timer for ${type} cleared. Cooldown finished.`);
+                } else {
+                  updatedPrev[type] = updatedPrev[type] - 1000;
+                  console.log(`  Cooldown tick for ${type}: ${updatedPrev[type]}`);
+                }
+                return updatedPrev;
+              });
+            }, 1000);
+          } else {
+            console.log(`  No cooldown needed for ${type}. remainingCooldown is 0 or less.`);
+          }
+        } else {
+          console.log(`  ${type} has no collectionInterval configured.`);
+        }
+      });
+      setCollectionCooldowns(newCooldowns);
+      console.log('Final newCooldowns state:', newCooldowns);
+    } else {
+      console.log('Missing resources properties for cooldown (resources, lastCollected, or buildingConfigs).');
     }
     return () => {
-      if (cooldownTimerRef.current) {
-        clearInterval(cooldownTimerRef.current);
+      console.log('--- Cooldown useEffect cleanup ---');
+      for (const type in cooldownTimerRefs.current) {
+        clearInterval(cooldownTimerRefs.current[type]);
       }
+      cooldownTimerRefs.current = {};
     };
   }, [resources]);
 
@@ -128,6 +165,7 @@ function App() {
         headers: { Authorization: `Bearer ${currentToken}` },
       })
       setResources(response.data)
+      console.log('Fetched resources data:', response.data); 
     } catch (error) {
       console.error('Error fetching resources:', error)
       setResources(null)
@@ -141,11 +179,11 @@ function App() {
         headers: { Authorization: `Bearer ${currentToken}` },
       })
       setBuildings(response.data.buildings)
-      generateMapGrid(response.data.buildings); // Explicitly call generateMapGrid with fresh data
+      generateMapGrid(response.data.buildings); 
     } catch (error) {
       console.error('Error fetching buildings:', error)
       setBuildings([])
-      generateMapGrid([]); // Also update map grid on error
+      generateMapGrid([]); 
     }
   }
 
@@ -238,9 +276,17 @@ function App() {
       alert('Please log in first.');
       return;
     }
-    // Removed building.type === 'office' check
-    if (collectionCooldown > 0) {
-      alert(`Collection on cooldown. Please wait ${formatTime(collectionCooldown)}.`);
+    
+    const buildingType = building.type;
+    const config = resources.buildingConfigs[buildingType];
+    if (!config || !config.collectionInterval) {
+      alert(`Collection interval not configured for ${buildingType}.`);
+      return;
+    }
+
+    const currentCooldown = collectionCooldowns[buildingType] || 0;
+    if (currentCooldown > 0) {
+      alert(`Collection for ${buildingType} is on cooldown. Please wait ${formatTime(currentCooldown)}.`);
       return;
     }
 
@@ -266,7 +312,11 @@ function App() {
     setBuildings([])
     setAvailableBuildingTypes([])
     setMapGrid([])
-    setCollectionCooldown(0); 
+    setCollectionCooldowns({}); 
+    for (const type in cooldownTimerRefs.current) {
+      clearInterval(cooldownTimerRefs.current[type]);
+    }
+    cooldownTimerRefs.current = {};
     localStorage.removeItem('jwtToken')
     setMessage('Logged out')
   }
@@ -295,13 +345,17 @@ function App() {
 
           <h3>Your Resources:</h3>
           {resources ? (
-            <pre>{JSON.stringify(resources, null, 2)}</pre>
+            <pre>{
+`Gold: ${resources.gold}
+Fanpower: ${resources.fanpower}
+Gems: ${resources.gems}
+Water: ${resources.water}
+Food: ${resources.food}
+Electricity: ${resources.electricity}`
+            }</pre>
           ) : (
             <p>Loading resources...</p>
           )}
-
-          <h3>Collect Resources</h3>
-          {/* Removed Collect Resources button */}
 
           <h3>Build Building</h3>
           <div>
@@ -363,18 +417,18 @@ function App() {
                       fontSize: '0.7em',
                       backgroundColor: cell ? '#e0ffe0' : '#f0f0f0',
                       color: 'black',
-                      cursor: cell ? 'pointer' : 'default', // Cursor for any building
+                      cursor: cell ? 'pointer' : 'default',
                     }}
-                    onClick={() => cell && handleCollectResources(cell)} // Call for any building
+                    onClick={() => cell && handleCollectResources(cell)}
                   >
                     {cell ? (
                       <>
                         <div>{cell.type.replace(/_/g, ' ')}</div>
                         <div>Lvl: {cell.level}</div>
                         <div>F:{cell.floor} S:{cell.slots.join(',')}</div>
-                        {cell.type === 'office' && collectionCooldown > 0 && (
+                        {collectionCooldowns[cell.type] > 0 && (
                           <div style={{ fontSize: '0.8em', color: 'red' }}>
-                            CD: {formatTime(collectionCooldown)}
+                            CD: {formatTime(collectionCooldowns[cell.type])}
                           </div>
                         )}
                       </>
