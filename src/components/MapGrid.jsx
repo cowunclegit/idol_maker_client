@@ -1,4 +1,5 @@
 import React from 'react';
+import { ELEVATOR_BUILDABLE } from '../hooks/useGameData';
 
 const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleCollectResources, formatTime, buildingConfigs, onEmptyCellClick, minSlot }) => {
   return (
@@ -15,7 +16,7 @@ const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleColle
             const remainingConstructionTime = cell && constructionTimers[cell._id] || 0;
 
             let spanWidth = 1; // Default for empty cells
-            if (cell) {
+            if (cell && cell !== ELEVATOR_BUILDABLE) {
                 const buildingConfig = buildingConfigs?.[cell.type];
                 const requiredSlots = buildingConfig?.slot || 2; // Default to 2 if not specified
                 spanWidth = cell.mergedCount * requiredSlots;
@@ -23,6 +24,8 @@ const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleColle
 
             const displayFloor = mapGrid.length - 1 - rowIndex;
             const displaySlot = colIndex + minSlot;
+
+            const isElevatorBuildable = cell === ELEVATOR_BUILDABLE;
 
             return (
               <div
@@ -36,20 +39,19 @@ const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleColle
                   justifyContent: 'center',
                   alignItems: 'center',
                   fontSize: '0.7em',
-                  backgroundColor: cell ? '#e0ffe0' : '#ADD8E6', // Light blue for empty cells
+                  backgroundColor: isElevatorBuildable ? '#FFD700' : (cell ? '#e0ffe0' : '#ADD8E6'), // Gold for elevator buildable, light green for occupied, light blue for empty
                   color: 'black',
-                  cursor: cell ? 'pointer' : 'pointer', // Always pointer for clickable cells
+                  cursor: 'pointer',
                 }}
                 onClick={() => {
-                  if (cell) {
+                  if (cell && cell !== ELEVATOR_BUILDABLE) {
                     handleCollectResources(cell._id, cell.type, cell.level, collectionCooldowns);
                   } else {
-                    console.log('Display Slot', displaySlot);
-                    onEmptyCellClick(displayFloor, displaySlot); // Pass displaySlot
+                    onEmptyCellClick(displayFloor, displaySlot);
                   }
                 }}
               >
-                {cell ? (
+                {cell && cell !== ELEVATOR_BUILDABLE ? (
                   <>
                     <div>{cell.type.replace(/_/g, ' ')}</div>
                     <div>Lvl: {cell.level}</div>
@@ -64,6 +66,12 @@ const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleColle
                         {formatTime(remainingConstructionTime)}
                       </div>
                     )}
+                  </>
+                ) : isElevatorBuildable ? (
+                  <>
+                    <div>Elevator</div>
+                    <div>Buildable</div>
+                    <div>F:{displayFloor} S:{displaySlot}</div>
                   </>
                 ) : (
                   `F:${displayFloor} S:${displaySlot}`

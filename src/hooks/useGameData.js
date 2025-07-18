@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 const API_BASE_URL = '';
+const MAX_SLOT = 20;
+export const ELEVATOR_BUILDABLE = 'ELEVATOR_BUILDABLE'; // New constant and export
 
 const useGameData = (token, fetchProfile) => {
   const [resources, setResources] = useState(null);
@@ -137,10 +139,10 @@ const useGameData = (token, fetchProfile) => {
     if (allOccupiedSlots.length > 0) {
       currentMaxSlot = Math.max(...allOccupiedSlots);
     }
-    const maxSlot = Math.max(currentMaxSlot, 9); // Ensure at least 10 slots are displayed (0-5)
+    const maxSlot = Math.max(currentMaxSlot, MAX_SLOT); // Ensure at least 10 slots are displayed (0-5)
 
     const gridWidth = maxSlot - minSlot + 1;
-    const gridHeight = maxFloor + 1;
+    const gridHeight = maxFloor + 2; // Extend grid height to allow for building above maxFloor
 
     const newGrid = Array(gridHeight).fill(null).map(() => Array(gridWidth).fill(null));
 
@@ -156,6 +158,20 @@ const useGameData = (token, fetchProfile) => {
         }
       });
     });
+
+    // Mark elevator buildable slots
+    for (let f = 0; f < gridHeight; f++) { // Loop up to gridHeight
+      for (let s = 0; s < gridWidth; s++) {
+        const currentCell = newGrid[f][s];
+        if (currentCell && currentCell.type === 'elevator') {
+          const nextFloor = f + 1;
+          if (nextFloor < gridHeight && newGrid[nextFloor][s] === null) {
+            newGrid[nextFloor][s] = ELEVATOR_BUILDABLE;
+          }
+        }
+      }
+    }
+
     setMapGrid(newGrid);
   };
 
