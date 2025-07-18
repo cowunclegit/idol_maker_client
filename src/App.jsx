@@ -13,10 +13,7 @@ function App() {
   const [availableBuildingTypes, setAvailableBuildingTypes] = useState([])
   const [mapGrid, setMapGrid] = useState([])
   const [collectionCooldowns, setCollectionCooldowns] = useState({}); 
-  const cooldownTimerRefs = useRef({}); 
-  const [selectedBuildingForUpgrade, setSelectedBuildingForUpgrade] = useState(null); 
   const [constructionTimers, setConstructionTimers] = useState({}); 
-  const constructionTimerRefs = useRef({}); 
 
   const API_BASE_URL = '' 
 
@@ -86,119 +83,64 @@ function App() {
     }
   }, [token])
 
-  // Cooldown timer effect for each building type
+  // Single master interval for all time-based updates
   useEffect(() => {
-    console.log('--- Cooldown useEffect triggered ---');
-    console.log('Resources for cooldown calculation:', resources);
+    console.log('--- Starting master interval ---');
+    const masterInterval = setInterval(() => {
+      // Update collection cooldowns
+      setCollectionCooldowns(prevCooldowns => {
+        const updatedCooldowns = { ...prevCooldowns };
+        let changed = false;
+        if (resources && resources.lastCollected && resources.buildingConfigs) {
+          Object.keys(resources.buildingConfigs).forEach(type => {
+            const config = resources.buildingConfigs[type];
+            if (config.collectionInterval) {
+              const lastCollectedTime = resources.lastCollected[type] ? new Date(resources.lastCollected[type]).getTime() : 0;
+              const collectionInterval = config.collectionInterval;
+              const timeElapsed = Date.now() - lastCollectedTime;
+              const remainingCooldown = Math.max(0, collectionInterval - timeElapsed);
 
-    // Clear all existing timers before setting new ones
-    for (const type in cooldownTimerRefs.current) {
-      clearInterval(cooldownTimerRefs.current[type]);
-      delete cooldownTimerRefs.current[type];
-    }
-
-    if (resources && resources.lastCollected && resources.buildingConfigs) {
-      console.log('Resources, lastCollected, and buildingConfigs are present.');
-      const newCooldowns = {};
-      const buildingTypes = Object.keys(resources.buildingConfigs);
-
-      buildingTypes.forEach(type => {
-        const config = resources.buildingConfigs[type];
-        if (config.collectionInterval) {
-          const lastCollectedTime = resources.lastCollected[type] ? new Date(resources.lastCollected[type]).getTime() : 0;
-          const collectionInterval = config.collectionInterval;
-          const timeElapsed = Date.now() - lastCollectedTime;
-          const remainingCooldown = Math.max(0, collectionInterval - timeElapsed);
-          
-          console.log(`  Type: ${type}, lastCollectedTime: ${lastCollectedTime}, collectionInterval: ${collectionInterval}, timeElapsed: ${timeElapsed}, remainingCooldown: ${remainingCooldown}`);
-
-          newCooldowns[type] = remainingCooldown;
-
-          if (remainingCooldown > 0) {
-            console.log(`  Starting timer for ${type} with remaining: ${remainingCooldown}`);
-            cooldownTimerRefs.current[type] = setInterval(() => {
-              setCollectionCooldowns(prev => {
-                const updatedPrev = { ...prev };
-                if (updatedPrev[type] <= 1000) {
-                  clearInterval(cooldownTimerRefs.current[type]);
-                  delete cooldownTimerRefs.current[type];
-                  updatedPrev[type] = 0;
-                  console.log(`  Timer for ${type} cleared. Cooldown finished.`);
-                }
-                return updatedPrev;
-              });
-            }, 1000);
-          } else {
-            console.log(`  No cooldown needed for ${type}. remainingCooldown is 0 or less.`);
-          }
-        } else {
-          console.log(`  ${type} has no collectionInterval configured.`);
-        }
-      });
-      setCollectionCooldowns(newCooldowns);
-      console.log('Final newCooldowns state:', newCooldowns);
-    } else {
-      console.log('Missing resources properties for cooldown (resources, lastCollected, or buildingConfigs).');
-    }
-    return () => {
-      console.log('--- Cooldown useEffect cleanup ---');
-      for (const type in cooldownTimerRefs.current) {
-        clearInterval(cooldownTimerRefs.current[type]);
-      }
-      cooldownTimerRefs.current = {};
-    };
-  }, [resources]);
-
-  // Construction timer effect
-  useEffect(() => {
-    console.log('--- Construction useEffect triggered ---');
-    // Clear all existing timers
-    for (const buildingId in constructionTimerRefs.current) {
-      clearInterval(constructionTimerRefs.current[buildingId]);
-      delete constructionTimerRefs.current[buildingId];
-    }
-
-    const newConstructionTimers = {};
-    buildings.forEach(building => {
-      if (building.isConstructing) {
-        const finishTime = new Date(building.constructionFinishTime).getTime();
-        const remainingTime = Math.max(0, finishTime - Date.now());
-        newConstructionTimers[building._id] = remainingTime;
-
-        if (remainingTime > 0) {
-          console.log(`  Starting construction timer for ${building.type} (${building._id}) with remaining: ${remainingTime}`);
-          constructionTimerRefs.current[building._id] = setInterval(() => {
-            setConstructionTimers(prev => {
-              const updatedPrev = { ...prev };
-              if (updatedPrev[building._id] <= 1000) {
-                clearInterval(constructionTimerRefs.current[building._id]);
-                delete constructionTimerRefs.current[building._id];
-                updatedPrev[building._id] = 0;
-                console.log(`  Construction for ${building.type} (${building._id}) finished.`);
-                // Removed automatic handleFinishConstruction call
-              } else {
-                updatedPrev[building._id] = updatedPrev[building._id] - 1000;
+              if (updatedCooldowns[type] !== remainingCooldown) {
+                updatedCooldowns[type] = remainingCooldown;
+                changed = true;
               }
-              return updatedPrev;
-            });
-          }, 1000);
-        } else {
-          // If already finished, set remaining time to 0
-          newConstructionTimers[building._id] = 0;
-          console.log(`  Construction for ${building.type} (${building._id}) already finished.`);
+            }
+          });
         }
-      }
-    });
-    setConstructionTimers(newConstructionTimers);
+        return changed ? updatedCooldowns : prevCooldowns;
+      });
+
+      // Update construction timers
+      setConstructionTimers(prevTimers => {
+        const updatedTimers = { ...prevTimers };
+        let changed = false;
+        buildings.forEach(building => {
+          if (building.isConstructing) {
+            const finishTime = new Date(building.constructionFinishTime).getTime();
+            const remainingTime = Math.max(0, finishTime - Date.now());
+
+            if (updatedTimers[building._id] !== remainingTime) {
+              updatedTimers[building._id] = remainingTime;
+              changed = true;
+            }
+
+            // If construction is finished, trigger finish construction
+            if (remainingTime <= 0 && building.isConstructing) { // Ensure it's still marked as constructing
+              console.log(`  Construction for ${building.type} (${building._id}) finished. Triggering finish.`);
+              handleFinishConstruction(building._id); 
+            }
+          }
+        });
+        return changed ? updatedTimers : prevTimers;
+      });
+
+    }, 1000);
 
     return () => {
-      console.log('--- Construction useEffect cleanup ---');
-      for (const buildingId in constructionTimerRefs.current) {
-        clearInterval(constructionTimerRefs.current[buildingId]);
-      }
-      constructionTimerRefs.current = {};
+      console.log('--- Clearing master interval ---');
+      clearInterval(masterInterval);
     };
-  }, [buildings, token]); 
+  }, [resources, buildings, token]); // Dependencies for master interval
 
   const fetchProfile = async (currentToken) => {
     try {
@@ -391,15 +333,6 @@ function App() {
     setAvailableBuildingTypes([])
     setMapGrid([])
     setCollectionCooldowns({}); 
-    for (const type in cooldownTimerRefs.current) {
-      clearInterval(cooldownTimerRefs.current[type]);
-    }
-    cooldownTimerRefs.current = {};
-    // Clear construction timers on logout
-    for (const buildingId in constructionTimerRefs.current) {
-      clearInterval(constructionTimerRefs.current[buildingId]);
-    }
-    constructionTimerRefs.current = {};
     localStorage.removeItem('jwtToken')
     setMessage('Logged out')
   }
