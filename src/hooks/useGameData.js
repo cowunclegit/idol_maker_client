@@ -8,6 +8,7 @@ const useGameData = (token, fetchProfile) => {
   const [buildings, setBuildings] = useState([]);
   const [availableBuildingTypes, setAvailableBuildingTypes] = useState([]);
   const [mapGrid, setMapGrid] = useState([]);
+  const [minSlot, setMinSlot] = useState(0); // Add minSlot state
   const [collectionCooldowns, setCollectionCooldowns] = useState({});
   const [constructionTimers, setConstructionTimers] = useState({});
   const masterIntervalRef = useRef(null);
@@ -129,8 +130,14 @@ const useGameData = (token, fetchProfile) => {
       allOccupiedSlots = allOccupiedSlots.concat(occupiedSlots);
     });
 
-    const maxSlot = Math.max(...allOccupiedSlots);
-    const minSlot = Math.min(...allOccupiedSlots);
+    const minSlot = 0; // Always start from slot 0 for display purposes
+    setMinSlot(minSlot); 
+
+    let currentMaxSlot = 0;
+    if (allOccupiedSlots.length > 0) {
+      currentMaxSlot = Math.max(...allOccupiedSlots);
+    }
+    const maxSlot = Math.max(currentMaxSlot, 9); // Ensure at least 10 slots are displayed (0-5)
 
     const gridWidth = maxSlot - minSlot + 1;
     const gridHeight = maxFloor + 1;
@@ -180,6 +187,7 @@ const useGameData = (token, fetchProfile) => {
     fetchBuildings,
     fetchAvailableBuildingTypes,
     handleFinishConstruction,
+    minSlot,
   };
 };
 

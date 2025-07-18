@@ -1,6 +1,6 @@
 import React from 'react';
 
-const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleCollectResources, formatTime, buildingConfigs }) => {
+const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleCollectResources, formatTime, buildingConfigs, onEmptyCellClick, minSlot }) => {
   return (
     <div style={{ display: 'grid', border: '1px solid black' }}>
       {mapGrid.slice().reverse().map((row, rowIndex) => (
@@ -21,6 +21,9 @@ const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleColle
                 spanWidth = cell.mergedCount * requiredSlots;
             }
 
+            const displayFloor = mapGrid.length - 1 - rowIndex;
+            const displaySlot = colIndex + minSlot;
+
             return (
               <div
                 key={`${rowIndex}-${colIndex}`}
@@ -33,11 +36,18 @@ const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleColle
                   justifyContent: 'center',
                   alignItems: 'center',
                   fontSize: '0.7em',
-                  backgroundColor: cell ? '#e0ffe0' : '#f0f0f0',
+                  backgroundColor: cell ? '#e0ffe0' : '#ADD8E6', // Light blue for empty cells
                   color: 'black',
-                  cursor: cell ? 'pointer' : 'default',
+                  cursor: cell ? 'pointer' : 'pointer', // Always pointer for clickable cells
                 }}
-                onClick={() => cell && handleCollectResources(cell._id, cell.type, cell.level, collectionCooldowns)}
+                onClick={() => {
+                  if (cell) {
+                    handleCollectResources(cell._id, cell.type, cell.level, collectionCooldowns);
+                  } else {
+                    console.log('Display Slot', displaySlot);
+                    onEmptyCellClick(displayFloor, displaySlot); // Pass displaySlot
+                  }
+                }}
               >
                 {cell ? (
                   <>
@@ -56,7 +66,7 @@ const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleColle
                     )}
                   </>
                 ) : (
-                  `F:${mapGrid.length - 1 - rowIndex} S:${colIndex}`
+                  `F:${displayFloor} S:${displaySlot}`
                 )}
               </div>
             );
