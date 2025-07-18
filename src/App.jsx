@@ -214,8 +214,18 @@ function App() {
     }
 
     const maxFloor = Math.max(...currentBuildings.map(b => b.floor));
-    const maxSlot = Math.max(...currentBuildings.flatMap(b => b.slots));
-    const minSlot = Math.min(...currentBuildings.flatMap(b => b.slots));
+    const maxSlot = Math.max(...currentBuildings.flatMap(b => {
+      const buildingConfig = resources?.buildingConfigs?.[b.type];
+      const requiredSlots = buildingConfig?.slot || 2;
+      const occupiedSlots = Array.from({ length: b.mergedCount * requiredSlots }, (_, i) => b.slots + i);
+      return occupiedSlots;
+    }));
+    const minSlot = Math.min(...currentBuildings.flatMap(b => {
+      const buildingConfig = resources?.buildingConfigs?.[b.type];
+      const requiredSlots = buildingConfig?.slot || 2;
+      const occupiedSlots = Array.from({ length: b.mergedCount * requiredSlots }, (_, i) => b.slots + i);
+      return occupiedSlots;
+    }));
 
     const gridWidth = maxSlot - minSlot + 1;
     const gridHeight = maxFloor + 1; 
@@ -223,7 +233,11 @@ function App() {
     const newGrid = Array(gridHeight).fill(null).map(() => Array(gridWidth).fill(null));
 
     currentBuildings.forEach(building => {
-      building.slots.forEach(s => {
+      const buildingConfig = resources?.buildingConfigs?.[building.type];
+      const requiredSlots = buildingConfig?.slot || 2;
+      const occupiedSlots = Array.from({ length: building.mergedCount * requiredSlots }, (_, i) => building.slots + i);
+
+      occupiedSlots.forEach(s => {
         const normalizedSlot = s - minSlot; 
         if (newGrid[building.floor] && newGrid[building.floor][normalizedSlot] === null) {
           newGrid[building.floor][normalizedSlot] = building; 
@@ -443,7 +457,7 @@ Electricity: ${resources.electricity}`
                 const remainingConstructionTime = constructionTimers[b._id] || 0;
                 return (
                   <li key={b._id}>
-                    ID: {b._id}, Type: {b.type}, Level: {b.level}, Floor: {b.floor}, Slots: {b.slots.join(', ')}
+                    ID: {b._id}, Type: {b.type}, Level: {b.level}, Floor: {b.floor}, Slot: {b.slots}, Merged: {b.mergedCount}
                     {b.isConstructing && (
                       <span style={{ marginLeft: '10px', color: 'blue' }}>
                         (Constructing: {formatTime(remainingConstructionTime)})
@@ -506,7 +520,7 @@ Electricity: ${resources.electricity}`
                         <>
                           <div>{cell.type.replace(/_/g, ' ')}</div>
                           <div>Lvl: {cell.level}</div>
-                          <div>F:{cell.floor} S:{cell.slots.join(',')}</div>
+                          <div>F:{cell.floor} S:{cell.slots} M:{cell.mergedCount}</div>
                           {collectionCooldowns[cell._id] > 0 && (
                             <div style={{ fontSize: '0.8em', color: 'red' }}>
                               CD: {formatTime(collectionCooldowns[cell._id])}
