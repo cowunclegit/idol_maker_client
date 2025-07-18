@@ -14,6 +14,7 @@ function App() {
   const [mapGrid, setMapGrid] = useState([])
   const [collectionCooldowns, setCollectionCooldowns] = useState({}); 
   const [constructionTimers, setConstructionTimers] = useState({}); 
+  const masterIntervalRef = useRef(null); // Ref for the single master interval
 
   const API_BASE_URL = '' 
 
@@ -86,22 +87,24 @@ function App() {
   // Single master interval for all time-based updates
   useEffect(() => {
     console.log('--- Starting master interval ---');
-    const masterInterval = setInterval(() => {
+    masterIntervalRef.current = setInterval(() => {
       // Update collection cooldowns
       setCollectionCooldowns(prevCooldowns => {
         const updatedCooldowns = { ...prevCooldowns };
         let changed = false;
         if (resources && resources.lastCollected && resources.buildingConfigs) {
-          Object.keys(resources.buildingConfigs).forEach(type => {
-            const config = resources.buildingConfigs[type];
-            if (config.collectionInterval) {
-              const lastCollectedTime = resources.lastCollected[type] ? new Date(resources.lastCollected[type]).getTime() : 0;
-              const collectionInterval = config.collectionInterval;
+          // Iterate over all buildings to update their individual cooldowns
+          buildings.forEach(building => {
+            const lastCollectedTime = resources.lastCollected[building._id] ? new Date(resources.lastCollected[building._id]).getTime() : 0;
+            const config = resources.buildingConfigs[building.type];
+            const collectionInterval = config?.levels[building.level]?.collectionInterval; // Get interval from specific building level
+
+            if (collectionInterval) {
               const timeElapsed = Date.now() - lastCollectedTime;
               const remainingCooldown = Math.max(0, collectionInterval - timeElapsed);
 
-              if (updatedCooldowns[type] !== remainingCooldown) {
-                updatedCooldowns[type] = remainingCooldown;
+              if (updatedCooldowns[building._id] !== remainingCooldown) {
+                updatedCooldowns[building._id] = remainingCooldown;
                 changed = true;
               }
             }
@@ -125,7 +128,7 @@ function App() {
             }
 
             // If construction is finished, trigger finish construction
-            if (remainingTime <= 0 && building.isConstructing) { // Ensure it's still marked as constructing
+            if (remainingTime <= 0 && building.isConstructing) { 
               console.log(`  Construction for ${building.type} (${building._id}) finished. Triggering finish.`);
               handleFinishConstruction(building._id); 
             }
@@ -138,7 +141,7 @@ function App() {
 
     return () => {
       console.log('--- Clearing master interval ---');
-      clearInterval(masterInterval);
+      clearInterval(masterIntervalRef.current);
     };
   }, [resources, buildings, token]); // Dependencies for master interval
 
@@ -299,12 +302,12 @@ function App() {
     
     const buildingType = building.type;
     const config = resources.buildingConfigs[buildingType];
-    if (!config || !config.collectionInterval) {
-      alert(`Collection interval not configured for ${buildingType}.`);
+    if (!config || !config.levels[building.level] || !config.levels[building.level].collectionInterval) {
+      alert(`Collection interval not configured for ${buildingType} level ${building.level}.`);
       return;
     }
 
-    const currentCooldown = collectionCooldowns[buildingType] || 0;
+    const currentCooldown = collectionCooldowns[building._id] || 0; // Use building._id for cooldown
     if (currentCooldown > 0) {
       alert(`Collection for ${buildingType} is on cooldown. Please wait ${formatTime(currentCooldown)}.`);
       return;
@@ -333,6 +336,11 @@ function App() {
     setAvailableBuildingTypes([])
     setMapGrid([])
     setCollectionCooldowns({}); 
+    // Clear master interval on logout
+    if (masterIntervalRef.current) {
+      clearInterval(masterIntervalRef.current);
+      masterIntervalRef.current = null;
+    }
     localStorage.removeItem('jwtToken')
     setMessage('Logged out')
   }
@@ -499,14 +507,14 @@ Electricity: ${resources.electricity}`
                           <div>{cell.type.replace(/_/g, ' ')}</div>
                           <div>Lvl: {cell.level}</div>
                           <div>F:{cell.floor} S:{cell.slots.join(',')}</div>
+                          {collectionCooldowns[cell._id] > 0 && (
+                            <div style={{ fontSize: '0.8em', color: 'red' }}>
+                              CD: {formatTime(collectionCooldowns[cell._id])}
+                            </div>
+                          )}
                           {cell.isConstructing && (
                             <div style={{ fontSize: '0.8em', color: 'blue' }}>
                               {formatTime(remainingConstructionTime)}
-                            </div>
-                          )}
-                          {collectionCooldowns[cell.type] > 0 && (
-                            <div style={{ fontSize: '0.8em', color: 'red' }}>
-                              CD: {formatTime(collectionCooldowns[cell.type])}
                             </div>
                           )}
                         </>
