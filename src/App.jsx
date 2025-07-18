@@ -91,6 +91,7 @@ function App() {
             constructionTimers={constructionTimers}
             handleCollectResources={handleCollectResources}
             formatTime={formatTime}
+            buildingConfigs={resources?.buildingConfigs}
           />
         </div>
       ) : (
