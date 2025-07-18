@@ -14,6 +14,9 @@ function App() {
   const [mapGrid, setMapGrid] = useState([])
   const [collectionCooldowns, setCollectionCooldowns] = useState({}); 
   const cooldownTimerRefs = useRef({}); 
+  const [selectedBuildingForUpgrade, setSelectedBuildingForUpgrade] = useState(null); 
+  const [constructionTimers, setConstructionTimers] = useState({}); // New state for construction timers
+  const constructionTimerRefs = useRef({}); // New ref for construction timers
 
   const API_BASE_URL = '' 
 
@@ -26,14 +29,22 @@ function App() {
     console.log('Google Client ID from .env:', GOOGLE_CLIENT_ID);
 
     if (window.google) {
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleCredentialResponse,
-      });
-      window.google.accounts.id.renderButton(
-        document.getElementById('google-sign-in-button'),
-        { theme: 'outline', size: 'large' }
-      );
+      console.log('window.google is available.');
+      const googleSignInButton = document.getElementById('google-sign-in-button');
+      console.log('Google Sign-In Button Element:', googleSignInButton);
+
+      if (googleSignInButton) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredentialResponse,
+        });
+        window.google.accounts.id.renderButton(
+          googleSignInButton,
+          { theme: 'outline', size: 'large' }
+        );
+      } else {
+        console.error('Error: Google Sign-In Button element not found.');
+      }
     } else {
       console.log('window.google is NOT available. Please ensure the GSI script is loaded.');
     }
@@ -113,9 +124,6 @@ function App() {
                   delete cooldownTimerRefs.current[type];
                   updatedPrev[type] = 0;
                   console.log(`  Timer for ${type} cleared. Cooldown finished.`);
-                } else {
-                  updatedPrev[type] = updatedPrev[type] - 1000;
-                  console.log(`  Cooldown tick for ${type}: ${updatedPrev[type]}`);
                 }
                 return updatedPrev;
               });
@@ -140,6 +148,57 @@ function App() {
       cooldownTimerRefs.current = {};
     };
   }, [resources]);
+
+  // Construction timer effect
+  useEffect(() => {
+    console.log('--- Construction useEffect triggered ---');
+    // Clear all existing timers
+    for (const buildingId in constructionTimerRefs.current) {
+      clearInterval(constructionTimerRefs.current[buildingId]);
+      delete constructionTimerRefs.current[buildingId];
+    }
+
+    const newConstructionTimers = {};
+    buildings.forEach(building => {
+      if (building.isConstructing) {
+        const finishTime = new Date(building.constructionFinishTime).getTime();
+        const remainingTime = Math.max(0, finishTime - Date.now());
+        newConstructionTimers[building._id] = remainingTime;
+
+        if (remainingTime > 0) {
+          console.log(`  Starting construction timer for ${building.type} (${building._id}) with remaining: ${remainingTime}`);
+          constructionTimerRefs.current[building._id] = setInterval(() => {
+            setConstructionTimers(prev => {
+              const updatedPrev = { ...prev };
+              if (updatedPrev[building._id] <= 1000) {
+                clearInterval(constructionTimerRefs.current[building._id]);
+                delete constructionTimerRefs.current[building._id];
+                updatedPrev[building._id] = 0;
+                console.log(`  Construction for ${building.type} (${building._id}) finished.`);
+                handleFinishConstruction(building._id); // Call finish construction API
+              } else {
+                updatedPrev[building._id] = updatedPrev[building._id] - 1000;
+              }
+              return updatedPrev;
+            });
+          }, 1000);
+        } else {
+          // If already finished, trigger finish construction immediately if not already done
+          console.log(`  Construction for ${building.type} (${building._id}) already finished. Calling finish.`);
+          handleFinishConstruction(building._id);
+        }
+      }
+    });
+    setConstructionTimers(newConstructionTimers);
+
+    return () => {
+      console.log('--- Construction useEffect cleanup ---');
+      for (const buildingId in constructionTimerRefs.current) {
+        clearInterval(constructionTimerRefs.current[buildingId]);
+      }
+      constructionTimerRefs.current = {};
+    };
+  }, [buildings, token]); // Add token to dependencies as handleFinishConstruction uses it
 
   const fetchProfile = async (currentToken) => {
     try {
@@ -271,6 +330,25 @@ function App() {
     }
   }
 
+  const handleFinishConstruction = async (buildingId) => {
+    if (!token) {
+      console.error('Cannot finish construction: No token available.');
+      return;
+    }
+    try {
+      console.log('Finishing construction for building:', buildingId);
+      const response = await axios.post(
+        `${API_BASE_URL}/api/game/finish_construction`,
+        { buildingId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log('Finish construction response:', response.data.message);
+      fetchBuildings(token); // Refresh buildings to update status
+    } catch (error) {
+      console.error('Error finishing construction:', error.response ? error.response.data : error);
+    }
+  };
+
   const handleCollectResources = async (building) => {
     if (!token) {
       alert('Please log in first.');
@@ -317,6 +395,11 @@ function App() {
       clearInterval(cooldownTimerRefs.current[type]);
     }
     cooldownTimerRefs.current = {};
+    // Clear construction timers on logout
+    for (const buildingId in constructionTimerRefs.current) {
+      clearInterval(constructionTimerRefs.current[buildingId]);
+    }
+    constructionTimerRefs.current = {};
     localStorage.removeItem('jwtToken')
     setMessage('Logged out')
   }
@@ -328,17 +411,36 @@ function App() {
     return `${minutes > 0 ? `${minutes}m ` : ''}${remainingSeconds}s`;
   };
 
+  const getBuildingCost = (type) => {
+    if (!resources || !resources.buildingConfigs || !resources.buildingConfigs[type]) {
+      return null;
+    }
+    return resources.buildingConfigs[type].levels[1].cost; // Cost for level 1
+  };
+
+  const getUpgradeCost = (building) => {
+    if (!resources || !resources.buildingConfigs || !resources.buildingConfigs[building.type]) {
+      return null;
+    }
+    const config = resources.buildingConfigs[building.type];
+    const nextLevel = building.level + 1;
+    if (nextLevel > config.maxLevel) {
+      return null; // Already max level
+    }
+    return config.levels[nextLevel]?.cost; // Cost for next level
+  };
+
+  const selectedBuildingCost = getBuildingCost(buildingType);
+
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>Idol Maker Client</h1>
       <p>Status: {message}</p>
 
-      {!user ? (
-        <div>
-          <h2>Authentication</h2>
-          <div id="google-sign-in-button"></div>
-        </div>
-      ) : (
+      {/* Google Sign-In Button always rendered for initialization */}
+      <div id="google-sign-in-button" style={{ display: user ? 'none' : 'block' }}></div>
+
+      {user ? (
         <div>
           <h2>Welcome, {user.username}!</h2>
           <button onClick={handleLogout}>Logout</button>
@@ -369,6 +471,14 @@ Electricity: ${resources.electricity}`
                 ))}
               </select>
             </label>
+            {selectedBuildingCost && (
+              <div style={{ fontSize: '0.9em', marginTop: '5px' }}>
+                Required: 
+                {selectedBuildingCost.gold > 0 && `Gold: ${selectedBuildingCost.gold} `}
+                {selectedBuildingCost.fanpower > 0 && `Fanpower: ${selectedBuildingCost.fanpower} `}
+                {selectedBuildingCost.electricity > 0 && `Electricity: ${selectedBuildingCost.electricity} `}
+              </div>
+            )}
           </div>
           <div>
             <label>
@@ -387,13 +497,33 @@ Electricity: ${resources.electricity}`
           <h3>Your Buildings:</h3>
           {buildings.length > 0 ? (
             <ul>
-              {buildings.map((b) => (
-                <li key={b._id}>
-                  ID: {b._id}, Type: {b.type}, Level: {b.level}, Floor: {b.floor}, Slots: {b.slots.join(', ')}
-                  {b.isConstructing && ' (Constructing)'}
-                  <button onClick={() => handleUpgrade(b._id)}>Upgrade</button>
-                </li>
-              ))}
+              {buildings.map((b) => {
+                const upgradeCost = getUpgradeCost(b);
+                const remainingConstructionTime = constructionTimers[b._id] || 0;
+                return (
+                  <li key={b._id}>
+                    ID: {b._id}, Type: {b.type}, Level: {b.level}, Floor: {b.floor}, Slots: {b.slots.join(', ')}
+                    {b.isConstructing && (
+                      <span style={{ marginLeft: '10px', color: 'blue' }}>
+                        (Constructing: {formatTime(remainingConstructionTime)})
+                      </span>
+                    )}
+                    {!b.isConstructing && upgradeCost ? (
+                      <>
+                        <button onClick={() => handleUpgrade(b._id)}>Upgrade</button>
+                        <span style={{ fontSize: '0.8em', marginLeft: '10px' }}>
+                          Cost: 
+                          {upgradeCost.gold > 0 && `Gold: ${upgradeCost.gold} `}
+                          {upgradeCost.fanpower > 0 && `Fanpower: ${upgradeCost.fanpower} `}
+                          {upgradeCost.electricity > 0 && `Electricity: ${upgradeCost.electricity} `}
+                        </span>
+                      </>
+                    ) : (
+                      !b.isConstructing && <span style={{ marginLeft: '10px', color: 'gray' }}>Max Level</span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p>No buildings found.</p>
@@ -403,44 +533,54 @@ Electricity: ${resources.electricity}`
           <div style={{ display: 'grid', border: '1px solid black' }}>
             {mapGrid.slice().reverse().map((row, rowIndex) => (
               <div key={rowIndex} style={{ display: 'flex' }}>
-                {row.map((cell, colIndex) => (
-                  <div
-                    key={`${rowIndex}-${colIndex}`}
-                    style={{
-                      width: '80px',
-                      height: '80px',
-                      border: '1px solid #ccc',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      fontSize: '0.7em',
-                      backgroundColor: cell ? '#e0ffe0' : '#f0f0f0',
-                      color: 'black',
-                      cursor: cell ? 'pointer' : 'default',
-                    }}
-                    onClick={() => cell && handleCollectResources(cell)}
-                  >
-                    {cell ? (
-                      <>
-                        <div>{cell.type.replace(/_/g, ' ')}</div>
-                        <div>Lvl: {cell.level}</div>
-                        <div>F:{cell.floor} S:{cell.slots.join(',')}</div>
-                        {collectionCooldowns[cell.type] > 0 && (
-                          <div style={{ fontSize: '0.8em', color: 'red' }}>
-                            CD: {formatTime(collectionCooldowns[cell.type])}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      `F:${mapGrid.length - 1 - rowIndex} S:${colIndex}`
-                    )}
-                  </div>
-                ))}
+                {row.map((cell, colIndex) => {
+                  const remainingConstructionTime = cell && constructionTimers[cell._id] || 0;
+                  return (
+                    <div
+                      key={`${rowIndex}-${colIndex}`}
+                      style={{
+                        width: '80px',
+                        height: '80px',
+                        border: '1px solid #ccc',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        fontSize: '0.7em',
+                        backgroundColor: cell ? '#e0ffe0' : '#f0f0f0',
+                        color: 'black',
+                        cursor: cell ? 'pointer' : 'default',
+                      }}
+                      onClick={() => cell && handleCollectResources(cell)}
+                    >
+                      {cell ? (
+                        <>
+                          <div>{cell.type.replace(/_/g, ' ')}</div>
+                          <div>Lvl: {cell.level}</div>
+                          <div>F:{cell.floor} S:{cell.slots.join(',')}</div>
+                          {cell.isConstructing && (
+                            <div style={{ fontSize: '0.8em', color: 'blue' }}>
+                              {formatTime(remainingConstructionTime)}
+                            </div>
+                          )}
+                          {collectionCooldowns[cell.type] > 0 && (
+                            <div style={{ fontSize: '0.8em', color: 'red' }}>
+                              CD: {formatTime(collectionCooldowns[cell.type])}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        `F:${mapGrid.length - 1 - rowIndex} S:${colIndex}`
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
         </div>
+      ) : (
+        <p>Please log in to view game content.</p>
       )}
     </div>
   )
