@@ -7,6 +7,7 @@ const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleColle
       {mapGrid.slice().reverse().map((row, rowIndex) => (
         <div key={rowIndex} style={{ display: 'flex' }}>
           {row.map((cell, colIndex) => {
+            console.log(`MapGrid - Row: ${rowIndex}, Col: ${colIndex}, Cell:`, cell);
             // If the cell is null, or if it's a multi-slot building and this is not its starting slot,
             // then we don't render a new div for it. Instead, we let the starting slot's div span across.
             if (cell && colIndex > 0 && row[colIndex - 1] === cell) {
@@ -18,7 +19,9 @@ const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleColle
             let spanWidth = 1; // Default for empty cells
             if (cell && cell !== ELEVATOR_BUILDABLE) {
                 const buildingConfig = buildingConfigs?.[cell.type];
+                console.log(`  MapGrid - Building Config for ${cell.type}:`, buildingConfig);
                 const requiredSlots = buildingConfig?.slot || 2; // Default to 2 if not specified
+                console.log(`  MapGrid - Required Slots for ${cell.type}: ${requiredSlots}`);
                 spanWidth = cell.mergedCount * requiredSlots;
             }
 
@@ -26,6 +29,21 @@ const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleColle
             const displaySlot = colIndex + minSlot;
 
             const isElevatorBuildable = cell === ELEVATOR_BUILDABLE;
+
+            console.log(`Rendering F:${displayFloor} S:${displaySlot} (colIndex: ${colIndex})`);
+            if (cell && cell !== ELEVATOR_BUILDABLE) {
+                console.log(`  Building: ${cell.type}, slots: ${cell.slots}, mergedCount: ${cell.mergedCount}`);
+                const buildingConfig = buildingConfigs?.[cell.type];
+                console.log(`  Building Config for ${cell.type}:`, buildingConfig);
+                const requiredSlots = buildingConfig?.slot || 2;
+                console.log(`  Required Slots: ${requiredSlots}`);
+                spanWidth = cell.mergedCount * requiredSlots;
+                console.log(`  Calculated spanWidth: ${spanWidth}`);
+            } else if (isElevatorBuildable) {
+                console.log(`  Cell is ELEVATOR_BUILDABLE`);
+            } else {
+                console.log(`  Cell is empty`);
+            }
 
             return (
               <div

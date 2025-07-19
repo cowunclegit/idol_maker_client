@@ -97,7 +97,7 @@ const useGameData = (token, fetchProfile) => {
         headers: { Authorization: `Bearer ${currentToken}` },
       });
       setBuildings(response.data.buildings);
-      generateMapGrid(response.data.buildings, response.data.buildingConfigs); // Pass buildingConfigs
+      generateMapGrid(response.data.buildings, resources?.buildingConfigs); // Pass buildingConfigs from resources state
     } catch (error) {
       console.error('Error fetching buildings:', error);
       setBuildings([]);
@@ -118,6 +118,7 @@ const useGameData = (token, fetchProfile) => {
   };
 
   const generateMapGrid = (currentBuildings, buildingConfigs) => {
+    console.log("DEBUG: buildingConfigs received in generateMapGrid:", buildingConfigs);
     if (currentBuildings.length === 0) {
       setMapGrid([]);
       return;
@@ -136,23 +137,34 @@ const useGameData = (token, fetchProfile) => {
     setMinSlot(minSlot); 
 
     let currentMaxSlot = 0;
-    if (allOccupiedSlots.length > 0) {
-      currentMaxSlot = Math.max(...allOccupiedSlots);
-    }
-    const maxSlot = Math.max(currentMaxSlot, MAX_SLOT); // Ensure at least 10 slots are displayed (0-5)
+    currentBuildings.forEach(b => {
+      const buildingConfig = buildingConfigs?.[b.type];
+      const requiredSlots = buildingConfig?.slot || 2;
+      const buildingEndSlot = b.slots + (b.mergedCount * requiredSlots) - 1;
+      if (buildingEndSlot > currentMaxSlot) {
+        currentMaxSlot = buildingEndSlot;
+      }
+    });
+    const maxSlot = Math.max(currentMaxSlot, MAX_SLOT); // Ensure at least MAX_SLOT width
 
     const gridWidth = maxSlot - minSlot + 1;
     const gridHeight = maxFloor + 2; // Extend grid height to allow for building above maxFloor
 
     const newGrid = Array(gridHeight).fill(null).map(() => Array(gridWidth).fill(null));
 
+    console.log("--- generateMapGrid: Processing Buildings ---");
     currentBuildings.forEach(building => {
+      console.log(`  Processing Building: ID=${building._id}, Type=${building.type}, Floor=${building.floor}, Slots=${building.slots}, MergedCount=${building.mergedCount}`);
       const buildingConfig = buildingConfigs?.[building.type];
-      const requiredSlots = buildingConfig?.slot || 2;
+      const requiredSlots = buildingConfig?.slot || 2; // Default to 2 if not specified
+      console.log(`    Configured Slot for ${building.type}: ${buildingConfig?.slot}, Calculated Required Slots: ${requiredSlots}`);
+      console.log(`    DEBUG: building.mergedCount = ${building.mergedCount}, requiredSlots = ${requiredSlots}`);
       const occupiedSlots = Array.from({ length: building.mergedCount * requiredSlots }, (_, i) => building.slots + i);
+      console.log(`    Occupied Slots array:`, occupiedSlots);
 
       occupiedSlots.forEach(s => {
         const normalizedSlot = s - minSlot;
+        console.log(`      Populating newGrid[${building.floor}][${normalizedSlot}] with building ID: ${building._id}`);
         if (newGrid[building.floor] && newGrid[building.floor][normalizedSlot] === null) {
           newGrid[building.floor][normalizedSlot] = building;
         }
@@ -172,6 +184,7 @@ const useGameData = (token, fetchProfile) => {
       }
     }
 
+    console.log("Final newGrid before setting mapGrid:", newGrid);
     setMapGrid(newGrid);
   };
 
