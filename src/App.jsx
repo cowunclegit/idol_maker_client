@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import useAuth from './hooks/useAuth';
 import useGameData from './hooks/useGameData';
 import useBuildingActions from './hooks/useBuildingActions';
@@ -6,6 +7,9 @@ import MapGrid from './components/MapGrid';
 import BuildingList from './components/BuildingList';
 import ResourceDisplay from './components/ResourceDisplay';
 import BuildForm from './components/BuildForm';
+import BuildingActionsDialog from './components/BuildingActionsDialog';
+
+const API_BASE_URL = '';
 
 function App() {
   const { user, token, message, handleLogout, fetchProfile, setToken, setMessage } = useAuth();
@@ -20,6 +24,9 @@ function App() {
   const [dialogFloor, setDialogFloor] = useState(0);
   const [dialogSlot, setDialogSlot] = useState(0);
 
+  const [showBuildingActionsDialog, setShowBuildingActionsDialog] = useState(false);
+  const [selectedBuilding, setSelectedBuilding] = useState(null);
+
   useEffect(() => {
     if (availableBuildingTypes.length > 0) {
       setBuildingType(availableBuildingTypes[0]);
@@ -32,9 +39,38 @@ function App() {
     setShowBuildDialog(true);
   };
 
+  const handleBuildingClick = (building) => {
+    setSelectedBuilding(building);
+    setShowBuildingActionsDialog(true);
+  };
+
+  const handleCloseBuildingActionsDialog = () => {
+    setShowBuildingActionsDialog(false);
+    setSelectedBuilding(null);
+  };
+
   const handleBuildAndCloseDialog = async (buildingType, floor, slot) => {
     await handleBuild(buildingType, floor, slot);
     setShowBuildDialog(false);
+  };
+
+  const handleDemolish = async (buildingId) => {
+    if (window.confirm('Are you sure you want to demolish this building?')) {
+      try {
+        const response = await axios.post(
+          `${API_BASE_URL}/api/game/demolish`,
+          { buildingId },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        alert(response.data.message);
+        fetchBuildings(token);
+        fetchResources(token);
+        handleCloseBuildingActionsDialog();
+      } catch (error) {
+        console.error('Demolish Error:', error.response ? error.response.data : error);
+        alert(`Demolish failed: ${error.response ? error.response.data.message : error.message}`);
+      }
+    }
   };
 
   const getBuildingCost = (type) => {
@@ -131,6 +167,7 @@ function App() {
             buildingConfigs={resources?.buildingConfigs}
             onEmptyCellClick={handleEmptyCellClick}
             minSlot={minSlot}
+            onBuildingClick={handleBuildingClick}
           />
 
           {showBuildDialog && (
@@ -147,7 +184,7 @@ function App() {
               zIndex: 1000
             }}>
               <div style={{
-                backgroundColor: 'white',
+                backgroundColor: '#aaaaaa',
                 padding: '20px',
                 borderRadius: '8px',
                 position: 'relative'
@@ -178,6 +215,19 @@ function App() {
                 />
               </div>
             </div>
+          )}
+
+          {showBuildingActionsDialog && selectedBuilding && (
+            <BuildingActionsDialog
+              building={selectedBuilding}
+              onClose={handleCloseBuildingActionsDialog}
+              onCollect={handleCollectResources}
+              onUpgrade={handleUpgrade}
+              onDemolish={handleDemolish}
+              collectionCooldowns={collectionCooldowns}
+              formatTime={formatTime}
+              getUpgradeCost={getUpgradeCost}
+            />
           )}
         </div>
       ) : (
