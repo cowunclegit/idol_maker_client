@@ -129,6 +129,7 @@ const useBuildingManagement = (auth, gameData) => {
   const [selectedBuilding, setSelectedBuilding] = useState(null);
 
   const handleEmptyCellClick = (clickedFloor, clickedSlot) => {
+    console.log(`useBuildingManagement: Setting dialogFloor to ${clickedFloor}, dialogSlot to ${clickedSlot}`);
     setDialogFloor(clickedFloor);
     setDialogSlot(clickedSlot);
     setShowBuildDialog(true);

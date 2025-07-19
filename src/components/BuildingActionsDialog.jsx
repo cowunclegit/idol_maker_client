@@ -6,6 +6,7 @@ const BuildingActionsDialog = ({ gameData, buildingManagement }) => {
   const { handleCollectResources: onCollect, handleUpgrade: onUpgrade, handleDemolish: onDemolish, formatTime, getUpgradeCost } = buildingManagement.actions;
   const { collectionCooldowns } = gameData;
   const currentCooldown = collectionCooldowns[building._id] || 0;
+  const upgradeCost = getUpgradeCost(building); // Add this line
 
   return (
     <div style={{

@@ -5,7 +5,7 @@ const MapGrid = ({ gameData, buildingManagement }) => {
   const { mapGrid, collectionCooldowns, constructionTimers, resources, minSlot } = gameData;
   const { actions, dialogs } = buildingManagement;
   const { handleCollectResources, formatTime } = actions;
-  const { onEmptyCellClick, handleBuildingClick: onBuildingClick } = dialogs;
+  const { handleEmptyCellClick, handleBuildingClick } = dialogs;
   const buildingConfigs = resources?.buildingConfigs;
   return (
     <div style={{ display: 'grid', border: '1px solid black' }}>
@@ -50,8 +50,9 @@ const MapGrid = ({ gameData, buildingManagement }) => {
                 }}
                 onClick={() => {
                   if (cell && cell !== ELEVATOR_BUILDABLE) {
-                    onBuildingClick(cell); // Call onBuildingClick for built buildings
+                    handleBuildingClick(cell);
                   } else {
+                    console.log(`MapGrid: Calling onEmptyCellClick with Floor: ${displayFloor}, Slot: ${displaySlot}`);
                     handleEmptyCellClick(displayFloor, displaySlot);
                   }
                 }}
