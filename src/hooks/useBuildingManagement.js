@@ -7,26 +7,6 @@ const useBuildingManagement = (auth, gameData) => {
   const { token, fetchProfile } = auth;
   const { resources, buildings, availableBuildingTypes, collectionCooldowns, constructionTimers, fetchResources, fetchBuildings, handleFinishConstruction, minSlot } = gameData;
 
-  // From useBuildFormLogic - moved into dialogs
-  // const [buildingType, setBuildingType] = useState('idol_house');
-  // const [floor, setFloor] = useState(0);
-  // const [slot, setSlot] = useState(0);
-
-  // useEffect(() => {
-  //   if (availableBuildingTypes.length > 0) {
-  //     setBuildingType(availableBuildingTypes[0]);
-  //   }
-  // }, [availableBuildingTypes]);
-
-  // const getBuildingCost = (type) => {
-  //   if (!resources || !resources.buildingConfigs || !resources.buildingConfigs[type]) {
-  //     return null;
-  //   }
-  //   return resources.buildingConfigs[type].levels[1].cost; // Cost for level 1
-  // };
-
-  // const selectedBuildingCost = getBuildingCost(buildingType);
-
   // From useBuildingActions
   const handleBuild = async (type, floor, slot) => {
     if (!token) {

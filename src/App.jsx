@@ -3,8 +3,6 @@ import useGameLogic from './hooks/useGameLogic';
 import GoogleSignInButton from './components/GoogleSignInButton';
 import GameDashboard from './components/GameDashboard';
 
-const API_BASE_URL = '';
-
 function App() {
   const gameLogic = useGameLogic();
   const { auth } = gameLogic;

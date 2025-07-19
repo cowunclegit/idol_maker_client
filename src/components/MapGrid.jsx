@@ -4,7 +4,7 @@ import { ELEVATOR_BUILDABLE } from '../hooks/useGameData';
 const MapGrid = ({ gameData, buildingManagement }) => {
   const { mapGrid, collectionCooldowns, constructionTimers, resources, minSlot } = gameData;
   const { actions, dialogs } = buildingManagement;
-  const { handleCollectResources, formatTime } = actions;
+  const { formatTime } = actions;
   const { handleEmptyCellClick, handleBuildingClick } = dialogs;
   const buildingConfigs = resources?.buildingConfigs;
   return (
@@ -15,16 +15,16 @@ const MapGrid = ({ gameData, buildingManagement }) => {
             // If the cell is null, or if it's a multi-slot building and this is not its starting slot,
             // then we don't render a new div for it. Instead, we let the starting slot's div span across.
             if (cell && colIndex > 0 && row[colIndex - 1] === cell) {
-                return null; // This cell is part of a multi-slot building already rendered
+              return null; // This cell is part of a multi-slot building already rendered
             }
 
             const remainingConstructionTime = cell && constructionTimers[cell._id] || 0;
 
             let spanWidth = 1; // Default for empty cells
             if (cell && cell !== ELEVATOR_BUILDABLE) {
-                const buildingConfig = buildingConfigs?.[cell.type];
-                const requiredSlots = buildingConfig?.slot || 2; // Default to 2 if not specified
-                spanWidth = cell.mergedCount * requiredSlots;
+              const buildingConfig = buildingConfigs?.[cell.type];
+              const requiredSlots = buildingConfig?.slot || 2; // Default to 2 if not specified
+              spanWidth = cell.mergedCount * requiredSlots;
             }
 
             const displayFloor = mapGrid.length - 1 - rowIndex;
