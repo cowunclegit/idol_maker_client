@@ -7,25 +7,25 @@ const useBuildingManagement = (auth, gameData) => {
   const { token, fetchProfile } = auth;
   const { resources, buildings, availableBuildingTypes, collectionCooldowns, constructionTimers, fetchResources, fetchBuildings, handleFinishConstruction, minSlot } = gameData;
 
-  // From useBuildFormLogic
-  const [buildingType, setBuildingType] = useState('idol_house');
-  const [floor, setFloor] = useState(0);
-  const [slot, setSlot] = useState(0);
+  // From useBuildFormLogic - moved into dialogs
+  // const [buildingType, setBuildingType] = useState('idol_house');
+  // const [floor, setFloor] = useState(0);
+  // const [slot, setSlot] = useState(0);
 
-  useEffect(() => {
-    if (availableBuildingTypes.length > 0) {
-      setBuildingType(availableBuildingTypes[0]);
-    }
-  }, [availableBuildingTypes]);
+  // useEffect(() => {
+  //   if (availableBuildingTypes.length > 0) {
+  //     setBuildingType(availableBuildingTypes[0]);
+  //   }
+  // }, [availableBuildingTypes]);
 
-  const getBuildingCost = (type) => {
-    if (!resources || !resources.buildingConfigs || !resources.buildingConfigs[type]) {
-      return null;
-    }
-    return resources.buildingConfigs[type].levels[1].cost; // Cost for level 1
-  };
+  // const getBuildingCost = (type) => {
+  //   if (!resources || !resources.buildingConfigs || !resources.buildingConfigs[type]) {
+  //     return null;
+  //   }
+  //   return resources.buildingConfigs[type].levels[1].cost; // Cost for level 1
+  // };
 
-  const selectedBuildingCost = getBuildingCost(buildingType);
+  // const selectedBuildingCost = getBuildingCost(buildingType);
 
   // From useBuildingActions
   const handleBuild = async (type, floor, slot) => {
@@ -124,6 +124,22 @@ const useBuildingManagement = (auth, gameData) => {
   const [showBuildDialog, setShowBuildDialog] = useState(false);
   const [dialogFloor, setDialogFloor] = useState(0);
   const [dialogSlot, setDialogSlot] = useState(0);
+  const [dialogBuildingType, setDialogBuildingType] = useState('idol_house'); // New state for dialog building type
+
+  useEffect(() => {
+    if (availableBuildingTypes.length > 0) {
+      setDialogBuildingType(availableBuildingTypes[0]);
+    }
+  }, [availableBuildingTypes]);
+
+  const getDialogBuildingCost = (type) => {
+    if (!resources || !resources.buildingConfigs || !resources.buildingConfigs[type]) {
+      return null;
+    }
+    return resources.buildingConfigs[type].levels[1].cost; // Cost for level 1
+  };
+
+  const selectedDialogBuildingCost = getDialogBuildingCost(dialogBuildingType);
 
   const [showBuildingActionsDialog, setShowBuildingActionsDialog] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
@@ -163,16 +179,6 @@ const useBuildingManagement = (auth, gameData) => {
   };
 
   return {
-    buildForm: {
-      buildingType,
-      setBuildingType,
-      floor,
-      setFloor,
-      slot,
-      setSlot,
-      getBuildingCost,
-      selectedBuildingCost,
-    },
     actions: {
       handleBuild,
       handleUpgrade,
@@ -188,6 +194,10 @@ const useBuildingManagement = (auth, gameData) => {
       setDialogFloor,
       dialogSlot,
       setDialogSlot,
+      dialogBuildingType,
+      setDialogBuildingType,
+      getDialogBuildingCost,
+      selectedDialogBuildingCost,
       showBuildingActionsDialog,
       setShowBuildingActionsDialog,
       selectedBuilding,

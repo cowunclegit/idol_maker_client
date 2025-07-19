@@ -2,9 +2,8 @@ import React from 'react';
 
 const BuildForm = ({ gameData, buildingManagement }) => {
   const { availableBuildingTypes } = gameData;
-  const { buildForm, dialogs } = buildingManagement;
-  const { buildingType, setBuildingType, getBuildingCost, selectedBuildingCost } = buildForm;
-  const { dialogFloor: floor, setDialogFloor: setFloor, dialogSlot: slot, setDialogSlot: setSlot, handleBuildAndCloseDialog } = dialogs;
+  const { dialogs } = buildingManagement;
+  const { dialogBuildingType: buildingType, setDialogBuildingType: setBuildingType, dialogFloor: floor, setDialogFloor: setFloor, dialogSlot: slot, setDialogSlot: setSlot, getDialogBuildingCost: getBuildingCost, selectedDialogBuildingCost: selectedBuildingCost, handleBuildAndCloseDialog } = dialogs;
   return (
     <>
       <h3>Build Building</h3>

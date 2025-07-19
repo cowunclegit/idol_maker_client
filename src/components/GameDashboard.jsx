@@ -7,7 +7,7 @@ import BuildingActionsDialog from './BuildingActionsDialog';
 
 const GameDashboard = ({ gameLogic }) => {
   const { auth, gameData, buildingManagement } = gameLogic;
-  const { buildForm, actions, dialogs } = buildingManagement;
+  const { dialogs } = buildingManagement;
 
   return (
     <div>
