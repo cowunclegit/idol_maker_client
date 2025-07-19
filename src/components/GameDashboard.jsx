@@ -7,6 +7,7 @@ import BuildingActionsDialog from './BuildingActionsDialog';
 
 const GameDashboard = ({ gameLogic }) => {
   const { auth, gameData, buildingManagement } = gameLogic;
+  const { buildForm, actions, dialogs } = buildingManagement;
 
   return (
     <div>
@@ -36,7 +37,7 @@ const GameDashboard = ({ gameLogic }) => {
         buildingManagement={buildingManagement}
       />
 
-      {buildingManagement.showBuildDialog && (
+      {dialogs.showBuildDialog && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -56,7 +57,7 @@ const GameDashboard = ({ gameLogic }) => {
             position: 'relative'
           }}>
             <button
-              onClick={() => buildingManagement.setShowBuildDialog(false)}
+              onClick={() => dialogs.setShowBuildDialog(false)}
               style={{
                 position: 'absolute',
                 top: '10px',
@@ -75,7 +76,7 @@ const GameDashboard = ({ gameLogic }) => {
         </div>
       )}
 
-      {buildingManagement.showBuildingActionsDialog && buildingManagement.selectedBuilding && (
+      {dialogs.showBuildingActionsDialog && dialogs.selectedBuilding && (
         <BuildingActionsDialog
           gameData={gameData}
           buildingManagement={buildingManagement}

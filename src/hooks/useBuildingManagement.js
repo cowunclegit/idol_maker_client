@@ -162,39 +162,40 @@ const useBuildingManagement = (auth, gameData) => {
   };
 
   return {
-    // From useBuildFormLogic
-    buildingType,
-    setBuildingType,
-    floor,
-    setFloor,
-    slot,
-    setSlot,
-    getBuildingCost,
-    selectedBuildingCost,
-
-    // From useBuildingActions
-    handleBuild,
-    handleUpgrade,
-    handleCollectResources,
-    handleDemolish,
-    formatTime,
-
-    // From useBuildingDialogs
-    showBuildDialog,
-    setShowBuildDialog,
-    dialogFloor,
-    setDialogFloor,
-    dialogSlot,
-    setDialogSlot,
-    showBuildingActionsDialog,
-    setShowBuildingActionsDialog,
-    selectedBuilding,
-    setSelectedBuilding,
-    handleEmptyCellClick,
-    handleBuildingClick,
-    handleCloseBuildingActionsDialog,
-    handleBuildAndCloseDialog,
-    getUpgradeCost, // Also from buildingListLogic
+    buildForm: {
+      buildingType,
+      setBuildingType,
+      floor,
+      setFloor,
+      slot,
+      setSlot,
+      getBuildingCost,
+      selectedBuildingCost,
+    },
+    actions: {
+      handleBuild,
+      handleUpgrade,
+      handleCollectResources,
+      handleDemolish,
+      formatTime,
+      getUpgradeCost,
+    },
+    dialogs: {
+      showBuildDialog,
+      setShowBuildDialog,
+      dialogFloor,
+      setDialogFloor,
+      dialogSlot,
+      setDialogSlot,
+      showBuildingActionsDialog,
+      setShowBuildingActionsDialog,
+      selectedBuilding,
+      setSelectedBuilding,
+      handleEmptyCellClick,
+      handleBuildingClick,
+      handleCloseBuildingActionsDialog,
+      handleBuildAndCloseDialog,
+    },
   };
 };
 

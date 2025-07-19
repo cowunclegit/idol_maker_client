@@ -2,7 +2,9 @@ import React from 'react';
 
 const BuildForm = ({ gameData, buildingManagement }) => {
   const { availableBuildingTypes } = gameData;
-  const { buildingType, setBuildingType, floor, setFloor, slot, setSlot, handleBuild, getBuildingCost, selectedBuildingCost } = buildingManagement;
+  const { buildForm, dialogs } = buildingManagement;
+  const { buildingType, setBuildingType, floor, setFloor, slot, setSlot, getBuildingCost, selectedBuildingCost } = buildForm;
+  const { handleBuildAndCloseDialog } = dialogs;
   return (
     <>
       <h3>Build Building</h3>
@@ -38,7 +40,7 @@ const BuildForm = ({ gameData, buildingManagement }) => {
           <input type="number" value={slot} onChange={(e) => setSlot(e.target.value)} />
         </label>
       </div>
-      <button onClick={handleBuild}>Build</button>
+      <button onClick={() => handleBuildAndCloseDialog(buildingType, floor, slot)}>Build</button>
     </>
   );
 };

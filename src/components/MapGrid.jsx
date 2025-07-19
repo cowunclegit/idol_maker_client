@@ -3,7 +3,9 @@ import { ELEVATOR_BUILDABLE } from '../hooks/useGameData';
 
 const MapGrid = ({ gameData, buildingManagement }) => {
   const { mapGrid, collectionCooldowns, constructionTimers, resources, minSlot } = gameData;
-  const { handleCollectResources, formatTime, onEmptyCellClick, handleBuildingClick: onBuildingClick } = buildingManagement;
+  const { actions, dialogs } = buildingManagement;
+  const { handleCollectResources, formatTime } = actions;
+  const { onEmptyCellClick, handleBuildingClick: onBuildingClick } = dialogs;
   const buildingConfigs = resources?.buildingConfigs;
   return (
     <div style={{ display: 'grid', border: '1px solid black' }}>
@@ -50,7 +52,7 @@ const MapGrid = ({ gameData, buildingManagement }) => {
                   if (cell && cell !== ELEVATOR_BUILDABLE) {
                     onBuildingClick(cell); // Call onBuildingClick for built buildings
                   } else {
-                    onEmptyCellClick(displayFloor, displaySlot);
+                    handleEmptyCellClick(displayFloor, displaySlot);
                   }
                 }}
               >
