@@ -1,7 +1,7 @@
 import React from 'react';
 
-const BuildingActionsDialog = ({ building, onClose, onCollect, onUpgrade, onDemolish, collectionCooldowns, formatTime, getUpgradeCost }) => {
-  const upgradeCost = getUpgradeCost(building);
+const BuildingActionsDialog = ({ gameData, buildingManagement }) => {
+  const { selectedBuilding: building, handleCloseBuildingActionsDialog: onClose, handleCollectResources: onCollect, handleUpgrade: onUpgrade, handleDemolish: onDemolish, collectionCooldowns, formatTime, getUpgradeCost } = buildingManagement;
   const currentCooldown = collectionCooldowns[building._id] || 0;
 
   return (

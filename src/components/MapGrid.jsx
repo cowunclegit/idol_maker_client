@@ -1,7 +1,10 @@
 import React from 'react';
 import { ELEVATOR_BUILDABLE } from '../hooks/useGameData';
 
-const MapGrid = ({ mapGrid, collectionCooldowns, constructionTimers, handleCollectResources, formatTime, buildingConfigs, onEmptyCellClick, minSlot, onBuildingClick }) => {
+const MapGrid = ({ gameData, buildingManagement }) => {
+  const { mapGrid, collectionCooldowns, constructionTimers, resources, minSlot } = gameData;
+  const { handleCollectResources, formatTime, onEmptyCellClick, handleBuildingClick: onBuildingClick } = buildingManagement;
+  const buildingConfigs = resources?.buildingConfigs;
   return (
     <div style={{ display: 'grid', border: '1px solid black' }}>
       {mapGrid.slice().reverse().map((row, rowIndex) => (

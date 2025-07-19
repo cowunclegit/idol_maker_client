@@ -1,6 +1,8 @@
 import React from 'react';
 
-const BuildingList = ({ buildings, getUpgradeCost, handleUpgrade, handleFinishConstruction, constructionTimers, formatTime }) => {
+const BuildingList = ({ gameData, buildingManagement }) => {
+  const { buildings, constructionTimers, handleFinishConstruction } = gameData;
+  const { getUpgradeCost, handleUpgrade, formatTime } = buildingManagement;
   return (
     <ul>
       {buildings.map((b) => {

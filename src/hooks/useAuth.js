@@ -69,7 +69,7 @@ const useAuth = () => {
     setMessage('Logged out');
   };
 
-  return { user, token, message, handleLogout, fetchProfile, setToken, setMessage };
+  return { user, token, message, handleLogout, fetchProfile };
 };
 
 export default useAuth;

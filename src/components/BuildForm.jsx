@@ -1,6 +1,8 @@
 import React from 'react';
 
-const BuildForm = ({ buildingType, setBuildingType, availableBuildingTypes, floor, setFloor, slot, setSlot, handleBuild, getBuildingCost, selectedBuildingCost }) => {
+const BuildForm = ({ gameData, buildingManagement }) => {
+  const { availableBuildingTypes } = gameData;
+  const { buildingType, setBuildingType, floor, setFloor, slot, setSlot, handleBuild, getBuildingCost, selectedBuildingCost } = buildingManagement;
   return (
     <>
       <h3>Build Building</h3>
